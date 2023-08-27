@@ -10,8 +10,8 @@ import { Server, Socket } from "socket.io";
 // import routes
 import authRoute from "./route/authRoute";
 import userRoute from "./route/userRoute";
-import chatRoute from "./route/chatRoute"
-import testPopulateRoute from './route/testPopulate/testPopulateRoute'
+import chatRoute from "./route/chatRoute";
+import testPopulateRoute from "./route/testPopulate/testPopulateRoute";
 
 const roooms = ["general", "random", "news", "games", "coding"];
 
@@ -114,11 +114,25 @@ const socketIO = new Server(httpServer, {
 //   });
 // });
 
-
 //---------------------New Chat app video:creating chat app using chakra ui and socket io------------
 socketIO.on("connection", (socket: Socket) => {
   console.log(`⚡: ${socket.id} user just connected!`);
-    socket.on("disconnect", () => {
+
+  socket.on('joinRoom', ({ productId}:any) => {
+    socket.join(`${socket.id} ${productId}`);
+    console.log(`User joined room for product: ${productId}`);
+  });
+
+  //ai khnaey jei item post disey shey bid amount place kortey parbey na aita handle kora lagbey
+  socket.on('placeBid', ({ productId, bidAmount }) => {
+    console.log(`Bid of ${bidAmount} placed on product: ${productId}`);
+    // Broadcast the new bid to all users in the room (usually kicho logic aro boshbey aikhanye)
+    //https://socket.io/docs/v3/emit-cheatsheet/(follow this link for more info)
+    socketIO.emit('newBid', { pId:productId, bAmount:bidAmount });
+  });
+
+
+  socket.on("disconnect", () => {
     console.log("🔥: A user disconnected");
   });
 });
@@ -161,8 +175,8 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api/auth", authRoute);
 app.use("/api/user", userRoute);
-app.use("/api/chat",chatRoute)
-app.use('/api/create',testPopulateRoute)
+app.use("/api/chat", chatRoute);
+app.use("/api/create", testPopulateRoute);
 
 //error middleware
 app.use((err: any, req: any, res: any, next: any) => {
