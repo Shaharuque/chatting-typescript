@@ -115,12 +115,24 @@ const socketIO = new Server(httpServer, {
 // });
 
 //---------------------New Chat app video:creating chat app using chakra ui and socket io------------
+const bidTimers: Record<string, NodeJS.Timeout | null> = {}; // To track bid timers per room
+
 socketIO.on("connection", (socket: Socket) => {
   console.log(`⚡: ${socket.id} user just connected!`);
 
   socket.on('joinRoom', ({ productId}:any) => {
     socket.join(`${socket.id} ${productId}`);
     console.log(`User joined room for product: ${productId}`);
+
+    if (bidTimers[productId]) {
+      socket.emit('timerStart', { productId });
+    }
+  });
+
+  socket.on('startTimer', ({ productId }) => {
+    startBidTimer(productId);
+    // socketIO.to(productId).emit('timerStart', { productId });
+    socketIO.emit('timerStart', { productId });
   });
 
   //ai khnaey jei item post disey shey bid amount place kortey parbey na aita handle kora lagbey
@@ -135,7 +147,29 @@ socketIO.on("connection", (socket: Socket) => {
   socket.on("disconnect", () => {
     console.log("🔥: A user disconnected");
   });
+
+  const startBidTimer = (productId: string) => {
+    if (!bidTimers[productId]) {
+      let timeRemaining = 60; // Initial timer value
+      bidTimers[productId] = setInterval(() => {
+        timeRemaining--;
+        // socketIO.to(productId).emit('timerUpdate', { productId, timeRemaining });
+        socketIO.emit('timerUpdate', { productId, timeRemaining });
+        if (timeRemaining === 0) {
+          clearInterval(bidTimers[productId]!);
+          bidTimers[productId] = null;
+        }
+      }, 1000);
+    }
+  };
+
+  const resetBidTimer = (productId: string) => {
+    clearInterval(bidTimers[productId]!);
+    bidTimers[productId] = null;
+    startBidTimer(productId);
+  };
 });
+console.log(bidTimers)
 
 //socket io server listen on 8080 port
 httpServer.listen(8080, () => {
